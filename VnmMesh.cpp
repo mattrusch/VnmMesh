@@ -3,7 +3,9 @@
 #include <fbxsdk.h>
 #include <cstdint>
 #include <vector>
+#include <array>
 #include <string>
+#include <cassert>
 
 namespace Vnm
 {
@@ -59,7 +61,7 @@ namespace Vnm
 
 		void Create();
 		void ImportFile(const char* filename);
-		void BuildMeshPreorder(fbxsdk::FbxNode* node, VnmExportMesh& exportMesh);
+		void BuildMesh(VnmExportMesh& exportMesh);
 
 	protected:
 		fbxsdk::FbxManager*  mFbxManager;
@@ -98,14 +100,44 @@ namespace Vnm
 
 	static void AppendMesh(fbxsdk::FbxMesh* fbxMesh, VnmExportMesh& exportMesh)
 	{
-		exportMesh.mNumVertices.emplace_back(fbxMesh->GetPolygonVertexCount());
+		int numVerts = 0;
+		int numIndices = 0;
+
+		auto vertexPositions = fbxMesh->GetControlPoints();
+		int polygonCount = fbxMesh->GetPolygonCount();
+
+		const int numTriangleVertices = 3;
+		assert(fbxMesh->GetPolygonSize(0) == numTriangleVertices && "Mesh needs to be triangulated");
+		
+		for (int polygonIndex = 0; polygonIndex < polygonCount; ++polygonIndex)
+		{
+			auto positions = fbxMesh->GetControlPoints();
+			for (int triVertIndex = 0; triVertIndex < numTriangleVertices; ++triVertIndex)
+			{
+				Vertex exportVertex;
+
+				int vertexIndex = fbxMesh->GetPolygonVertex(polygonIndex, triVertIndex);
+				exportVertex.mPosition.v[0] = static_cast<float>(vertexPositions[vertexIndex].mData[0]);
+				exportVertex.mPosition.v[1] = static_cast<float>(vertexPositions[vertexIndex].mData[1]);
+				exportVertex.mPosition.v[2] = static_cast<float>(vertexPositions[vertexIndex].mData[2]);
+
+				exportMesh.mVertices.emplace_back(exportVertex);
+				exportMesh.mIndices.emplace_back(numVerts++);
+				++numIndices;
+			}
+		}
+
+		exportMesh.mNames.emplace_back(fbxMesh->GetName());
+		exportMesh.mNumVertices.emplace_back(numVerts);
+		exportMesh.mNumIndices.emplace_back(numIndices);
 	}
 
-	void FbxLoader::BuildMeshPreorder(fbxsdk::FbxNode* node, VnmExportMesh& exportMesh)
+	void BuildMeshPreorder(fbxsdk::FbxNode* node, VnmExportMesh& exportMesh)
 	{
 		FbxMesh* fbxMesh = node->GetMesh();
 		if (fbxMesh != nullptr)
 		{
+			AppendMesh(fbxMesh, exportMesh);
 		}
 
 		int numChildren = node->GetChildCount();
@@ -114,9 +146,24 @@ namespace Vnm
 			BuildMeshPreorder(node->GetChild(i), exportMesh);
 		}
 	}
+
+	void FbxLoader::BuildMesh(VnmExportMesh& exportMesh)
+	{
+		fbxsdk::FbxGeometryConverter geometryConverter(mFbxManager);
+		geometryConverter.Triangulate(mFbxScene, true);
+
+		BuildMeshPreorder(mFbxScene->GetRootNode(), exportMesh);
+	}
 }
 
 int main()
 {
+	Vnm::FbxLoader fbxLoader;
+	fbxLoader.Create();
+	fbxLoader.ImportFile("box.fbx");
+
+	Vnm::VnmExportMesh exportMesh;
+	fbxLoader.BuildMesh(exportMesh);
+
     return 0;
 }
