@@ -158,10 +158,16 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="targetver.h" />
+    <ClCompile Include="FbxLoader.cpp" />
+    <ClCompile Include="VnmMesh.cpp" />
+    <ClCompile Include="VnmMeshWriter.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="VnmMesh.cpp" />
+    <ClInclude Include="FbxLoader.h" />
+    <ClInclude Include="VnmExportMesh.h" />
+    <ClInclude Include="VnmMesh.h" />
+    <ClInclude Include="VnmMeshUtil.h" />
+    <ClInclude Include="VnmMeshWriter.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
