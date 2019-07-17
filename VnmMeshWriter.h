@@ -8,6 +8,6 @@ namespace Vnm
 	class MeshWriter
 	{
 	public:
-		void WriteMesh(const ExportMesh& exportMesh, const char* outputFileName) const;
+		void WriteMesh(const char* outputFileName, const ExportMesh& exportMesh) const;
 	};
 }

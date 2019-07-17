@@ -19,7 +19,8 @@ namespace Vnm
 
 		return true;
 	}
-	void MeshWriter::WriteMesh(const ExportMesh& exportMesh, const char* outputFileName) const
+
+	void MeshWriter::WriteMesh(const char* outputFileName, const ExportMesh& exportMesh) const
 	{
 		if (!ValidExportMesh(exportMesh))
 		{
@@ -29,16 +30,29 @@ namespace Vnm
 
 		MeshHeader header;
 		header.mMagic = ('v' << 24) | ('n' << 16) | ('m' << 8) | ('m');
-		header.mNumSubmeshes = exportMesh.mNumVertices.size();
-		header.mNumTotalVertices = exportMesh.mVertices.size();
-		header.mNumTotalIndices = exportMesh.mIndices.size();
+		header.mNumSubmeshes = static_cast<uint32_t>(exportMesh.mNumVertices.size());
+		header.mNumTotalVertices = static_cast<uint32_t>(exportMesh.mVertices.size());
+		header.mNumTotalIndices = static_cast<uint32_t>(exportMesh.mIndices.size());
 
 		std::vector<SubmeshDesc> submeshDescs(header.mNumSubmeshes);
-		for (int i = 0; i < header.mNumSubmeshes; ++i)
+		for (uint32_t i = 0; i < header.mNumSubmeshes; ++i)
 		{
-			strncpy(submeshDescs[i].mName, exportMesh.mNames[i].c_str(), sizeof(submeshDescs[i].mName));
+			strncpy_s(submeshDescs[i].mName, exportMesh.mNames[i].c_str(), sizeof(submeshDescs[i].mName));
 			submeshDescs[i].mNumVertices = exportMesh.mNumVertices[i];
 			submeshDescs[i].mNumIndices = exportMesh.mNumIndices[i];
 		}
+
+		std::fstream meshFile(outputFileName, std::ios::out | std::ios::binary);
+		if (!meshFile.is_open())
+		{
+			Log("Cannot open output file\n");
+			return;
+		}
+
+		meshFile.write(reinterpret_cast<char*>(&header), sizeof(header));
+		meshFile.write(reinterpret_cast<char*>(submeshDescs.data()), submeshDescs.size() * sizeof(submeshDescs[0]));
+		meshFile.write(reinterpret_cast<const char*>(exportMesh.mVertices.data()), exportMesh.mVertices.size() * sizeof(exportMesh.mVertices[0]));
+		meshFile.write(reinterpret_cast<const char*>(exportMesh.mIndices.data()), exportMesh.mIndices.size() * sizeof(exportMesh.mIndices[0]));
+		meshFile.close();
 	}
 }
