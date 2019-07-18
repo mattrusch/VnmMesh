@@ -29,7 +29,7 @@ namespace Vnm
 		}
 
 		MeshHeader header;
-		header.mMagic = ('v' << 24) | ('n' << 16) | ('m' << 8) | ('m');
+		header.mMagic = ('m' << 24) | ('m' << 16) | ('n' << 8) | ('v');
 		header.mNumSubmeshes = static_cast<uint32_t>(exportMesh.mNumVertices.size());
 		header.mNumTotalVertices = static_cast<uint32_t>(exportMesh.mVertices.size());
 		header.mNumTotalIndices = static_cast<uint32_t>(exportMesh.mIndices.size());
