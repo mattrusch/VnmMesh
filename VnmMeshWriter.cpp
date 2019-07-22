@@ -28,8 +28,9 @@ namespace Vnm
 			return;
 		}
 
+		const uint32_t vnmMesh4cc = ('m' << 24) | ('m' << 16) | ('n' << 8) | ('v');
 		MeshHeader header;
-		header.mMagic = ('m' << 24) | ('m' << 16) | ('n' << 8) | ('v');
+		header.mMagic = vnmMesh4cc;
 		header.mNumSubmeshes = static_cast<uint32_t>(exportMesh.mNumVertices.size());
 		header.mNumTotalVertices = static_cast<uint32_t>(exportMesh.mVertices.size());
 		header.mNumTotalIndices = static_cast<uint32_t>(exportMesh.mIndices.size());
