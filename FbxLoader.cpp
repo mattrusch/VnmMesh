@@ -49,15 +49,30 @@ namespace Vnm
 
 		for (int polygonIndex = 0; polygonIndex < polygonCount; ++polygonIndex)
 		{
-			auto positions = fbxMesh->GetControlPoints();
+			fbxsdk::FbxVector4* positions = fbxMesh->GetControlPoints();
 			for (int triVertIndex = 0; triVertIndex < numTriangleVertices; ++triVertIndex)
 			{
 				Vertex exportVertex;
 
-				int vertexIndex = fbxMesh->GetPolygonVertex(polygonIndex, triVertIndex);
-				exportVertex.mPosition.v[0] = static_cast<float>(vertexPositions[vertexIndex].mData[0]);
-				exportVertex.mPosition.v[1] = static_cast<float>(vertexPositions[vertexIndex].mData[1]);
-				exportVertex.mPosition.v[2] = static_cast<float>(vertexPositions[vertexIndex].mData[2]);
+				int positionIndex = fbxMesh->GetPolygonVertex(polygonIndex, triVertIndex);
+				exportVertex.mPosition.v[0] = static_cast<float>(vertexPositions[positionIndex].mData[0]);
+				exportVertex.mPosition.v[1] = static_cast<float>(vertexPositions[positionIndex].mData[1]);
+				exportVertex.mPosition.v[2] = static_cast<float>(vertexPositions[positionIndex].mData[2]);
+
+				fbxsdk::FbxVector4 normal;
+				bool hasNormal = fbxMesh->GetPolygonVertexNormal(polygonIndex, triVertIndex, normal);
+				if (!hasNormal)
+				{
+					normal.mData[0] = 0.0;
+					normal.mData[1] = 1.0;
+					normal.mData[2] = 0.0;
+				}
+				exportVertex.mNormal.v[0] = static_cast<float>(normal.mData[0]);
+				exportVertex.mNormal.v[1] = static_cast<float>(normal.mData[1]);
+				exportVertex.mNormal.v[2] = static_cast<float>(normal.mData[2]);
+
+				// Only use layer 0 uv and tangent basis data
+				//fbxsdk::FbxLayerElementUV* layerUvs = fbxMesh->GetLayer(0)->GetUVs();
 
 				exportMesh.mVertices.emplace_back(exportVertex);
 				exportMesh.mIndices.emplace_back(numVerts++);
