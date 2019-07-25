@@ -54,25 +54,59 @@ namespace Vnm
 			{
 				Vertex exportVertex;
 
-				int positionIndex = fbxMesh->GetPolygonVertex(polygonIndex, triVertIndex);
-				exportVertex.mPosition.v[0] = static_cast<float>(vertexPositions[positionIndex].mData[0]);
-				exportVertex.mPosition.v[1] = static_cast<float>(vertexPositions[positionIndex].mData[1]);
-				exportVertex.mPosition.v[2] = static_cast<float>(vertexPositions[positionIndex].mData[2]);
+				int vertexIndex = fbxMesh->GetPolygonVertex(polygonIndex, triVertIndex);
+				exportVertex.mPosition.v[0] = static_cast<float>(vertexPositions[vertexIndex].mData[0]);
+				exportVertex.mPosition.v[1] = static_cast<float>(vertexPositions[vertexIndex].mData[1]);
+				exportVertex.mPosition.v[2] = static_cast<float>(vertexPositions[vertexIndex].mData[2]);
 
 				fbxsdk::FbxVector4 normal;
 				bool hasNormal = fbxMesh->GetPolygonVertexNormal(polygonIndex, triVertIndex, normal);
 				if (!hasNormal)
 				{
-					normal.mData[0] = 0.0;
-					normal.mData[1] = 1.0;
-					normal.mData[2] = 0.0;
+					normal = fbxsdk::FbxVector4(0.0, 1.0, 0.0);
 				}
 				exportVertex.mNormal.v[0] = static_cast<float>(normal.mData[0]);
 				exportVertex.mNormal.v[1] = static_cast<float>(normal.mData[1]);
 				exportVertex.mNormal.v[2] = static_cast<float>(normal.mData[2]);
 
 				// Only use layer 0 uv and tangent basis data
-				//fbxsdk::FbxLayerElementUV* layerUvs = fbxMesh->GetLayer(0)->GetUVs();
+				const fbxsdk::FbxLayerElementUV* layerUvs = fbxMesh->GetLayer(0)->GetUVs();
+				fbxsdk::FbxVector2 uv;
+				switch (layerUvs->GetMappingMode())
+				{
+				case FbxLayerElement::eByControlPoint:
+					switch (layerUvs->GetReferenceMode())
+					{
+					case FbxLayerElement::eDirect:
+						uv = layerUvs->GetDirectArray().GetAt(vertexIndex);
+						break;
+					case FbxLayerElement::eIndex:
+					case FbxLayerElement::eIndexToDirect:
+						int uvIndex = layerUvs->GetIndexArray().GetAt(vertexIndex);
+						uv = layerUvs->GetDirectArray().GetAt(uvIndex);
+						break;
+					}
+					break;
+				case FbxLayerElement::eByPolygonVertex:
+					int polyVertIndex = polygonIndex * numTriangleVertices + triVertIndex;
+					switch (layerUvs->GetReferenceMode())
+					{
+					case FbxLayerElement::eDirect:
+						uv = layerUvs->GetDirectArray().GetAt(polyVertIndex);
+						break;
+					case FbxLayerElement::eIndex:
+					case FbxLayerElement::eIndexToDirect:
+						int uvIndex = layerUvs->GetIndexArray().GetAt(polyVertIndex);
+						uv = layerUvs->GetDirectArray().GetAt(uvIndex);
+						break;
+					}
+					break;
+				}
+
+				exportVertex.mUv.v[0] = static_cast<float>(uv.mData[0]);
+				exportVertex.mUv.v[1] = static_cast<float>(uv.mData[1]);
+
+				//fbxsdk::FbxLayerElementTangent* layerTangents = fbxMesh->GetLayer(0)->GetTangents();
 
 				exportMesh.mVertices.emplace_back(exportVertex);
 				exportMesh.mIndices.emplace_back(numVerts++);
@@ -85,7 +119,7 @@ namespace Vnm
 		exportMesh.mNumIndices.emplace_back(numIndices);
 	}
 
-	void BuildMeshPreorder(fbxsdk::FbxNode* node, ExportMesh& exportMesh)
+	static void BuildMeshPreorder(fbxsdk::FbxNode* node, ExportMesh& exportMesh)
 	{
 		FbxMesh* fbxMesh = node->GetMesh();
 		if (fbxMesh != nullptr)
