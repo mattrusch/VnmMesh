@@ -14,7 +14,6 @@ namespace Vnm
 		mFbxManager->SetIOSettings(ioSettings);
 
 		mFbxImporter = fbxsdk::FbxImporter::Create(mFbxManager, "VnmImporter");
-
 		mFbxScene = fbxsdk::FbxScene::Create(mFbxManager, "VnmScene");
 	}
 
@@ -73,6 +72,27 @@ namespace Vnm
 		return result;
 	}
 
+	static void ConvertFbxVector(Vector2& dst, const fbxsdk::FbxVector2& src)
+	{
+		dst.v[0] = static_cast<float>(src.mData[0]);
+		dst.v[1] = static_cast<float>(src.mData[1]);
+	}
+
+	static void ConvertFbxVector(Vector3& dst, const fbxsdk::FbxVector4& src)
+	{
+		dst.v[0] = static_cast<float>(src.mData[0]);
+		dst.v[1] = static_cast<float>(src.mData[1]);
+		dst.v[2] = static_cast<float>(src.mData[2]);
+	}
+
+	static void ConvertFbxVector(Vector4& dst, const fbxsdk::FbxVector4& src)
+	{
+		dst.v[0] = static_cast<float>(src.mData[0]);
+		dst.v[1] = static_cast<float>(src.mData[1]);
+		dst.v[3] = static_cast<float>(src.mData[3]);
+		dst.v[4] = static_cast<float>(src.mData[4]);
+	}
+
 	static void AppendMesh(fbxsdk::FbxMesh* fbxMesh, ExportMesh& exportMesh)
 	{
 		int numVerts = 0;
@@ -92,36 +112,22 @@ namespace Vnm
 				Vertex exportVertex;
 
 				int vertexIndex = fbxMesh->GetPolygonVertex(polygonIndex, triVertIndex);
-				exportVertex.mPosition.v[0] = static_cast<float>(vertexPositions[vertexIndex].mData[0]);
-				exportVertex.mPosition.v[1] = static_cast<float>(vertexPositions[vertexIndex].mData[1]);
-				exportVertex.mPosition.v[2] = static_cast<float>(vertexPositions[vertexIndex].mData[2]);
+				ConvertFbxVector(exportVertex.mPosition, vertexPositions[vertexIndex]);
 
-				fbxsdk::FbxVector4 normal;
-				bool hasNormal = fbxMesh->GetPolygonVertexNormal(polygonIndex, triVertIndex, normal);
-				if (!hasNormal)
-				{
-					normal = fbxsdk::FbxVector4(0.0, 1.0, 0.0);
-				}
-				exportVertex.mNormal.v[0] = static_cast<float>(normal.mData[0]);
-				exportVertex.mNormal.v[1] = static_cast<float>(normal.mData[1]);
-				exportVertex.mNormal.v[2] = static_cast<float>(normal.mData[2]);
+				fbxsdk::FbxVector4 normal(0.0, 1.0, 0.0, 0.0);
+				fbxMesh->GetPolygonVertexNormal(polygonIndex, triVertIndex, normal);
+				ConvertFbxVector(exportVertex.mNormal, normal);
 
 				// Only use layer 0 uv and tangent basis data
 				const fbxsdk::FbxLayerElementUV* layerUvs = fbxMesh->GetLayer(0)->GetUVs();
 				int polyVertIndex = polygonIndex * numTriangleVertices + triVertIndex;
 				fbxsdk::FbxVector2 uv = GetLayerElementData(layerUvs, vertexIndex, polyVertIndex);
-
-				exportVertex.mUv.v[0] = static_cast<float>(uv.mData[0]);
-				exportVertex.mUv.v[1] = static_cast<float>(uv.mData[1]);
+				ConvertFbxVector(exportVertex.mUv, uv);
 
 				fbxMesh->GenerateTangentsData(0);
 				const fbxsdk::FbxLayerElementTangent* layerTangents = fbxMesh->GetLayer(0)->GetTangents();
 				fbxsdk::FbxVector4 tangent = GetLayerElementData(layerTangents, vertexIndex, polyVertIndex);
-
-				exportVertex.mTangent.v[0] = static_cast<float>(tangent.mData[0]);
-				exportVertex.mTangent.v[1] = static_cast<float>(tangent.mData[1]);
-				exportVertex.mTangent.v[2] = static_cast<float>(tangent.mData[2]);
-				exportVertex.mTangent.v[3] = static_cast<float>(tangent.mData[3]);
+				ConvertFbxVector(exportVertex.mTangent, tangent);
 
 				exportMesh.mVertices.emplace_back(exportVertex);
 				exportMesh.mIndices.emplace_back(numVerts++);
