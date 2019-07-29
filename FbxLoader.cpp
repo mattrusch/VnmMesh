@@ -36,6 +36,43 @@ namespace Vnm
 		}
 	}
 
+	template< typename T >
+	T GetLayerElementData(const FbxLayerElementTemplate<T>* layer, int vertexIndex, int polyVertIndex)
+	{
+		T result;
+		switch (layer->GetMappingMode())
+		{
+		case FbxLayerElement::eByControlPoint:
+			switch (layer->GetReferenceMode())
+			{
+			case FbxLayerElement::eDirect:
+				result = layer->GetDirectArray().GetAt(vertexIndex);
+				break;
+			case FbxLayerElement::eIndex:
+			case FbxLayerElement::eIndexToDirect:
+				int resultIndex = layer->GetIndexArray().GetAt(vertexIndex);
+				result = layer->GetDirectArray().GetAt(resultIndex);
+				break;
+			}
+			break;
+		case FbxLayerElement::eByPolygonVertex:
+			switch (layer->GetReferenceMode())
+			{
+			case FbxLayerElement::eDirect:
+				result = layer->GetDirectArray().GetAt(polyVertIndex);
+				break;
+			case FbxLayerElement::eIndex:
+			case FbxLayerElement::eIndexToDirect:
+				int resultIndex = layer->GetIndexArray().GetAt(polyVertIndex);
+				result = layer->GetDirectArray().GetAt(resultIndex);
+				break;
+			}
+			break;
+		}
+
+		return result;
+	}
+
 	static void AppendMesh(fbxsdk::FbxMesh* fbxMesh, ExportMesh& exportMesh)
 	{
 		int numVerts = 0;
@@ -71,42 +108,20 @@ namespace Vnm
 
 				// Only use layer 0 uv and tangent basis data
 				const fbxsdk::FbxLayerElementUV* layerUvs = fbxMesh->GetLayer(0)->GetUVs();
-				fbxsdk::FbxVector2 uv;
-				switch (layerUvs->GetMappingMode())
-				{
-				case FbxLayerElement::eByControlPoint:
-					switch (layerUvs->GetReferenceMode())
-					{
-					case FbxLayerElement::eDirect:
-						uv = layerUvs->GetDirectArray().GetAt(vertexIndex);
-						break;
-					case FbxLayerElement::eIndex:
-					case FbxLayerElement::eIndexToDirect:
-						int uvIndex = layerUvs->GetIndexArray().GetAt(vertexIndex);
-						uv = layerUvs->GetDirectArray().GetAt(uvIndex);
-						break;
-					}
-					break;
-				case FbxLayerElement::eByPolygonVertex:
-					int polyVertIndex = polygonIndex * numTriangleVertices + triVertIndex;
-					switch (layerUvs->GetReferenceMode())
-					{
-					case FbxLayerElement::eDirect:
-						uv = layerUvs->GetDirectArray().GetAt(polyVertIndex);
-						break;
-					case FbxLayerElement::eIndex:
-					case FbxLayerElement::eIndexToDirect:
-						int uvIndex = layerUvs->GetIndexArray().GetAt(polyVertIndex);
-						uv = layerUvs->GetDirectArray().GetAt(uvIndex);
-						break;
-					}
-					break;
-				}
+				int polyVertIndex = polygonIndex * numTriangleVertices + triVertIndex;
+				fbxsdk::FbxVector2 uv = GetLayerElementData(layerUvs, vertexIndex, polyVertIndex);
 
 				exportVertex.mUv.v[0] = static_cast<float>(uv.mData[0]);
 				exportVertex.mUv.v[1] = static_cast<float>(uv.mData[1]);
 
-				//fbxsdk::FbxLayerElementTangent* layerTangents = fbxMesh->GetLayer(0)->GetTangents();
+				fbxMesh->GenerateTangentsData(0);
+				const fbxsdk::FbxLayerElementTangent* layerTangents = fbxMesh->GetLayer(0)->GetTangents();
+				fbxsdk::FbxVector4 tangent = GetLayerElementData(layerTangents, vertexIndex, polyVertIndex);
+
+				exportVertex.mTangent.v[0] = static_cast<float>(tangent.mData[0]);
+				exportVertex.mTangent.v[1] = static_cast<float>(tangent.mData[1]);
+				exportVertex.mTangent.v[2] = static_cast<float>(tangent.mData[2]);
+				exportVertex.mTangent.v[3] = static_cast<float>(tangent.mData[3]);
 
 				exportMesh.mVertices.emplace_back(exportVertex);
 				exportMesh.mIndices.emplace_back(numVerts++);
